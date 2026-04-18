@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/api.ts","./src/i18n.tsx","./src/main.tsx","./src/components/layout.tsx","./src/pages/clients.tsx","./src/pages/dashboard.tsx","./src/pages/form.tsx","./src/pages/nutrition.tsx","./src/pages/schedule.tsx","./src/pages/whatsapp.tsx","./src/pages/workouts.tsx"],"version":"5.9.3"}

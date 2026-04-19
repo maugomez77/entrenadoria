@@ -2,6 +2,15 @@ import { useEffect, useState } from "react";
 import { api, type Client, type Workout } from "../api";
 import { useI18n } from "../i18n";
 
+type VideoInfo = {
+  video_id: string | null;
+  title: string;
+  channel: string;
+  url: string;
+  embed_url: string | null;
+  search_url: string;
+};
+
 export default function Workouts() {
   const { t, lang } = useI18n();
   const [clients, setClients] = useState<Client[]>([]);
@@ -10,6 +19,7 @@ export default function Workouts() {
   const [duration, setDuration] = useState(45);
   const [workoutLang, setWorkoutLang] = useState<"es" | "en">(lang);
   const [loading, setLoading] = useState(false);
+  const [videoModal, setVideoModal] = useState<{ exercise: string; lang: "es" | "en"; info: VideoInfo | null; loading: boolean } | null>(null);
 
   const refresh = async () => {
     const [c, w] = await Promise.all([api.get<Client[]>("/clients"), api.get<Workout[]>("/workouts")]);
@@ -25,6 +35,18 @@ export default function Workouts() {
       await api.post("/ai/workout", { client_id: clientId, duration_minutes: duration, language: workoutLang });
       await refresh();
     } finally { setLoading(false); }
+  };
+
+  const openVideo = async (exerciseName: string, wLang: "es" | "en") => {
+    setVideoModal({ exercise: exerciseName, lang: wLang, info: null, loading: true });
+    try {
+      const r = await api.get<VideoInfo>("/videos/resolve", {
+        params: { exercise: exerciseName, language: wLang },
+      });
+      setVideoModal({ exercise: exerciseName, lang: wLang, info: r.data, loading: false });
+    } catch {
+      setVideoModal({ exercise: exerciseName, lang: wLang, info: null, loading: false });
+    }
   };
 
   return (
@@ -64,7 +86,14 @@ export default function Workouts() {
               <tbody>
                 {w.exercises.map((ex, i) => (
                   <tr key={i}>
-                    <td>{ex.name}</td>
+                    <td>
+                      <button
+                        className="video-btn"
+                        onClick={() => openVideo(ex.name, w.language)}
+                        title={lang === "es" ? "Ver técnica" : "Watch form"}
+                      >▶</button>
+                      {ex.name}
+                    </td>
                     <td style={{ textAlign: "right" }}>{ex.sets}×{ex.reps}</td>
                   </tr>
                 ))}
@@ -73,6 +102,55 @@ export default function Workouts() {
           </div>
         ))}
       </div>
+
+      {videoModal && (
+        <div className="modal-backdrop" onClick={() => setVideoModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                  {lang === "es" ? "Técnica" : "Form"} · {videoModal.lang.toUpperCase()}
+                </div>
+                <h3 style={{ margin: 0, color: "var(--text)" }}>{videoModal.exercise}</h3>
+              </div>
+              <button className="modal-close" onClick={() => setVideoModal(null)}>×</button>
+            </div>
+            <div className="video-frame">
+              {videoModal.loading && <div className="video-loading">{t.common.loading}</div>}
+              {!videoModal.loading && videoModal.info?.embed_url && (
+                <iframe
+                  src={`${videoModal.info.embed_url}?rel=0&autoplay=1`}
+                  title={videoModal.info.title}
+                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              )}
+              {!videoModal.loading && !videoModal.info?.embed_url && (
+                <div className="video-fallback">
+                  <p>
+                    {lang === "es"
+                      ? "YouTube API no configurado. Abrir búsqueda en YouTube:"
+                      : "YouTube API not configured. Open search on YouTube:"}
+                  </p>
+                  <a
+                    className="btn"
+                    href={videoModal.info?.search_url || "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    ▶ YouTube
+                  </a>
+                </div>
+              )}
+            </div>
+            {videoModal.info?.channel && (
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>
+                {videoModal.info.channel}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import ai, demo, store
+from . import ai, demo, store, videos
 
 app = FastAPI(title="EntrenadorIA API", version="0.1.0")
 app.add_middleware(
@@ -90,6 +90,7 @@ def root():
             "/clients", "/workouts", "/progress", "/form-analyses",
             "/nutrition-plans", "/appointments", "/messages",
             "/ai/workout", "/ai/form", "/ai/nutrition", "/ai/reply",
+            "/videos/resolve",
             "/status", "/demo/seed",
         ],
     }
@@ -290,6 +291,11 @@ def add_message(m: MessageIn):
     state["messages"].append(rec)
     store.save(state)
     return rec
+
+
+@app.get("/videos/resolve")
+def resolve_video(exercise: str, language: Literal["es", "en"] = "es"):
+    return videos.resolve_video(exercise, language=language)
 
 
 @app.post("/ai/reply")
